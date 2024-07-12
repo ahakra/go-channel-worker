@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:3.8.2
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper_data:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: bitnami/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    restart: always
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=0.0.0.0:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://0.0.0.0:9092
+    depends_on:
+      - zookeeper
+  ksql:
+    image: confluentinc/ksqldb-server:0.29.0
+    container_name: ksql
+    environment:
+      - KSQL_BOOTSTRAP_SERVERS=0.0.0.0:9092
+      - KSQL_LISTENERS=http://0.0.0.0:8088
+      - KSQL_KSQL_SERVICE_ID=ksql_service_2
+    ports:
+      - 8088:8088
+    depends_on:
+      - kafka
+
+  ksqldb-cli:
+    image: confluentinc/ksqldb-cli:0.29.0
+    container_name: ksqldb-cli
+    #command: /bin/sh -c "sleep infinity"
+    entrypoint: /bin/sh
+    tty: true
+    environment:
+      - KSQL_KSQL_SERVER=http://ksql:8088
+    depends_on:
+      - ksql
+    
+volumes:
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local
